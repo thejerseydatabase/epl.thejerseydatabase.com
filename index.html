@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="A fan-made tracker of jerseys worn in international football matches. Browse match results and kits by team and competition. No products are sold here.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23E8B84B' stroke-width='2'%3E%3Cpath d='M4 5l4-2 4 2 4-2 4 2v3l-3 1v11H7V9L4 8z'/%3E%3C/svg%3E">
+<title>Kit Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/2.44.0/tabler-icons.min.css">
+<style>
+  :root{
+    --bg:#0B1F17;
+    --surface:#12271D;
+    --surface-2:#1B3A2A;
+    --line:#264536;
+    --text:#F2F6EF;
+    --text-dim:#8FAA98;
+    --text-dim2:#5E7B69;
+    --accent:#E8B84B;
+    --win:#5FB88A;
+    --loss:#D9705C;
+    --draw:#E8C15A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+  }
+  a{color:inherit;}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 20px 80px;}
+
+  /* ---------- Hero ---------- */
+  .hero{
+    position:relative;
+    padding:64px 20px 48px;
+    text-align:center;
+    overflow:hidden;
+    border-bottom:1px solid var(--line);
+    margin-bottom:32px;
+  }
+  .hero-circle{
+    position:absolute;
+    top:50%;left:50%;
+    width:520px;height:520px;
+    border:1px solid rgba(242,246,239,0.06);
+    border-radius:50%;
+    transform:translate(-50%,-50%);
+    pointer-events:none;
+  }
+  .hero-glow{
+    position:absolute;
+    top:-180px;left:50%;
+    width:640px;height:400px;
+    transform:translateX(-50%);
+    background:radial-gradient(ellipse at center, rgba(232,184,75,0.16), transparent 70%);
+    pointer-events:none;
+    animation:glow 6s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion:reduce){ .hero-glow{animation:none;} }
+  @keyframes glow{ 0%,100%{opacity:.7} 50%{opacity:1} }
+  .eyebrow{
+    position:relative;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:.18em;
+    color:var(--accent);
+    text-transform:uppercase;
+    margin:0 0 14px;
+  }
+  .hero h1{
+    position:relative;
+    font-family:'Anton',sans-serif;
+    font-weight:400;
+    font-size:clamp(34px,6vw,58px);
+    letter-spacing:.01em;
+    text-transform:uppercase;
+    line-height:1.02;
+    margin:0 0 16px;
+  }
+  .stat-line{
+    position:relative;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    color:var(--text-dim);
+    margin:0;
+  }
+  .stat-line b{color:var(--text);font-weight:600;}
+
+  /* ---------- Controls ---------- */
+  .controls{
+    display:flex;
+    gap:10px;
+    margin-bottom:24px;
+    flex-wrap:wrap;
+  }
+  .controls input, .controls select{
+    background:var(--surface);
+    border:1px solid var(--line);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    padding:11px 14px;
+    border-radius:8px;
+    outline:none;
+  }
+  .controls input{flex:1;min-width:180px;}
+  .controls input::placeholder{color:var(--text-dim2);}
+  .controls input:focus, .controls select:focus{
+    border-color:var(--accent);
+    box-shadow:0 0 0 3px rgba(232,184,75,0.15);
+  }
+  .controls select{cursor:pointer;}
+
+  .search-wrap{position:relative;flex:1;min-width:180px;}
+  .search-wrap input{width:100%;padding-right:36px;}
+  #clear-search{
+    position:absolute;top:50%;right:10px;transform:translateY(-50%);
+    background:none;border:none;color:var(--text-dim2);font-size:18px;
+    cursor:pointer;line-height:1;padding:4px;
+  }
+  #clear-search:hover{color:var(--text);}
+  .suggestions{
+    position:absolute;top:calc(100% + 4px);left:0;right:0;
+    background:var(--surface-2);border:1px solid var(--line);border-radius:8px;
+    max-height:260px;overflow-y:auto;z-index:20;
+    box-shadow:0 8px 24px rgba(0,0,0,0.35);
+  }
+  .suggestion{
+    padding:9px 14px;font-size:13.5px;cursor:pointer;
+    display:flex;justify-content:space-between;gap:8px;
+  }
+  .suggestion .sc{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim2);}
+  .suggestion:hover, .suggestion.highlighted{background:var(--surface);}
+
+  /* ---------- Jersey stats table (shown when one team is selected) ---------- */
+  .jersey-stats{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:20px 20px 8px;
+    margin-bottom:16px;
+  }
+  .jersey-stats h2{
+    font-family:'Anton',sans-serif;font-weight:400;font-size:16px;
+    text-transform:uppercase;letter-spacing:.02em;margin:0 0 14px;
+    color:var(--text-dim);
+  }
+  .jersey-stats table{width:100%;border-collapse:collapse;font-size:13px;}
+  .jersey-stats th{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.05em;
+    color:var(--text-dim2);text-transform:uppercase;text-align:center;
+    padding:6px 4px;border-bottom:1px solid var(--line);
+  }
+  .jersey-stats th:first-child{text-align:left;}
+  .jersey-stats td{
+    text-align:center;padding:8px 4px;border-bottom:1px solid var(--line);
+    font-family:'IBM Plex Mono',monospace;
+  }
+  .jersey-stats td:first-child{
+    text-align:left;font-family:'Inter',sans-serif;font-weight:600;
+    font-size:12.5px;letter-spacing:.02em;
+  }
+  .jersey-stats tr.total-row td{color:var(--text);font-weight:600;background:var(--surface-2);}
+  .jersey-stats td.gd-pos{color:var(--win);}
+  .jersey-stats td.gd-neg{color:var(--loss);}
+
+  /* ---------- Matchup viewer (detail card) ---------- */
+  .matchup{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:32px 24px 24px;
+    margin-bottom:28px;
+    scroll-margin-top:20px;
+  }
+  .matchup-grid{
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    align-items:center;
+    gap:20px;
+  }
+  .jersey-slot{text-align:center;min-width:0;}
+  .jersey-photo{
+    width:150px;height:200px;
+    margin:0 auto 14px;
+    border-radius:14px;
+    background:var(--surface-2);
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+    border:1px solid var(--line);
+  }
+  .jersey-photo.has-image{background:#fff;border-color:#fff;}
+  .jersey-photo img{width:100%;height:100%;object-fit:contain;display:block;}
+  .jersey-photo .ti{font-size:36px;color:var(--text-dim2);}
+  .jersey-photo.empty{border-style:dashed;}
+  .no-photo-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    letter-spacing:.05em;
+    color:var(--text-dim2);
+    text-transform:uppercase;
+    margin:0 0 8px;
+    min-height:12px;
+  }
+  .team-name{
+    font-family:'Anton',sans-serif;
+    font-weight:400;
+    font-size:19px;
+    text-transform:uppercase;
+    letter-spacing:.01em;
+    margin:0 0 4px;
+    overflow-wrap:break-word;
+  }
+  .jersey-tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    margin:0;
+  }
+  .score-block{text-align:center;padding:0 6px;}
+  .score-tiles{display:flex;align-items:center;gap:8px;justify-content:center;}
+  .tile{
+    background:#0D1F16;
+    border:1px solid var(--line);
+    border-radius:8px;
+    width:44px;height:56px;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-weight:600;
+    font-size:26px;
+    color:var(--accent);
+    box-shadow:inset 0 2px 4px rgba(0,0,0,0.4);
+  }
+  .tile.win{color:var(--win);border-color:rgba(95,184,138,0.4);}
+  .tile.loss{color:var(--loss);border-color:rgba(217,112,92,0.4);}
+  .tile.draw{color:var(--draw);border-color:rgba(232,194,90,0.4);}
+  .tile-sep{color:var(--text-dim2);font-family:'IBM Plex Mono',monospace;font-size:20px;}
+  .vs-label{
+    font-family:'Anton',sans-serif;
+    font-size:26px;
+    color:var(--text-dim);
+  }
+  .ft-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    letter-spacing:.08em;
+    color:var(--text-dim2);
+    text-transform:uppercase;
+    margin:10px 0 0;
+  }
+  .meta-ticker{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--text-dim);
+    text-align:center;
+    border-top:1px solid var(--line);
+    margin-top:24px;
+    padding-top:16px;
+    letter-spacing:.02em;
+  }
+
+  /* ---------- Compact list (international-football.net style) ---------- */
+  .list-wrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+  .list-head, .row{
+    display:grid;
+    grid-template-columns: 78px 34px 1fr 30px 12px 30px 1fr 34px 52px 34px;
+    gap:6px;
+    align-items:center;
+  }
+  .list-head{
+    padding:10px 14px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    letter-spacing:.05em;
+    color:var(--text-dim2);
+    text-transform:uppercase;
+    background:var(--surface);
+    border-bottom:1px solid var(--line);
+  }
+  .list-head span:nth-child(4), .list-head span:nth-child(6){text-align:center;}
+  .row{
+    padding:9px 14px;
+    background:var(--surface);
+    border-bottom:1px solid var(--line);
+    cursor:pointer;
+    font-size:13px;
+    transition:background .12s ease;
+  }
+  .row:last-child{border-bottom:none;}
+  .row:hover{background:var(--surface-2);}
+  .row.active{background:var(--surface-2);box-shadow:inset 3px 0 0 var(--accent);}
+  .row .c-date{font-family:'IBM Plex Mono',monospace;color:var(--text-dim);font-size:11.5px;white-space:nowrap;}
+  .jcode{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    font-weight:600;
+    color:var(--text-dim);
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:2px 0;
+    text-align:center;
+    cursor:help;
+  }
+  .row .c-home{text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
+  .row .c-away{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
+  .result-win{color:var(--win);}
+  .result-loss{color:var(--loss);}
+  .result-draw{color:var(--draw);}
+  .row .c-hs, .row .c-as{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    text-align:center;
+    color:var(--text);
+  }
+  .c-dash{color:var(--text-dim2);text-align:center;font-size:11px;}
+  .row .c-comp{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    color:var(--text-dim);
+    text-align:center;
+    cursor:help;
+    text-transform:uppercase;
+  }
+  .c-photos{display:flex;gap:3px;justify-content:center;}
+  .photo-dot{width:7px;height:7px;border-radius:50%;background:var(--loss);}
+  .photo-dot.filled{background:var(--win);}
+  .no-results{padding:32px 16px;text-align:center;color:var(--text-dim);font-size:13.5px;}
+  .list-scroll{max-height:640px;overflow-y:auto;}
+
+  @media (max-width:760px){
+    .list-head, .row{grid-template-columns: 60px 26px 1fr 22px 10px 22px 1fr 26px;}
+    .list-head span:nth-child(9), .list-head span:nth-child(10),
+    .row .c-comp, .row .c-photos{display:none;}
+  }
+  @media (max-width:600px){
+    .matchup-grid{grid-template-columns:1fr;gap:16px;}
+    .score-block{order:-1;}
+  }
+
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="hero-glow"></div>
+    <div class="hero-circle"></div>
+    <p class="eyebrow">Premier League Jersey Tracker</p>
+    <h1>Every jersey.<br>Every scoreline.</h1>
+    <p class="stat-line"><b id="total-count">0</b> matches logged &middot; <b id="kit-count">0</b> with a jersey photo added</p>
+    <p class="stat-line" id="data-status" style="margin-top:6px;">Loading data&hellip;</p>
+  </header>
+
+  <section class="controls">
+    <div class="search-wrap">
+      <input id="search" type="text" placeholder="Search a club&hellip;" aria-label="Search a club" autocomplete="off">
+      <button id="clear-search" type="button" aria-label="Clear search" style="display:none;">&times;</button>
+      <div id="suggestions" class="suggestions" hidden></div>
+    </div>
+    <select id="comp-filter" aria-label="Filter by competition">
+      <option value="">All competitions</option>
+    </select>
+    <select id="status-filter" aria-label="Show results, fixtures, or all">
+      <option value="results">Results</option>
+      <option value="fixtures">Fixtures</option>
+      <option value="all">All</option>
+    </select>
+  </section>
+
+  <section class="jersey-stats" id="jersey-stats" hidden></section>
+
+  <section class="matchup" id="matchup"></section>
+
+  <section class="list-wrap">
+    <div class="list-head">
+      <span>Date</span><span>Jsy</span><span style="text-align:right">Home</span><span>HS</span><span></span><span>AS</span><span>Away</span><span>Jsy</span><span style="text-align:center">Comp</span><span style="text-align:center">Photos</span>
+    </div>
+    <div class="list-scroll"><div id="list"></div></div>
+  </section>
+
+  <footer style="margin-top:40px;padding-top:20px;border-top:1px solid var(--line);text-align:center;">
+    <p style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text-dim2);line-height:1.7;">
+      A fan-made project tracking jerseys worn in Premier League matches.<br>
+      Not a store &mdash; no products are sold here. Not affiliated with the Premier League, its clubs, or The FA.<br>
+      <a href="https://thejerseydatabase.com/contact/" style="color:var(--accent);text-decoration:none;">Spot an error? Get in touch &rarr;</a>
+    </p>
+  </footer>
+</div>
+
+<script>
+let MATCHES = [{"date": "2027-05-30", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 38", "homePens": null, "awayPens": null}, {"date": "2027-05-30", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 38", "homePens": null, "awayPens": null}, {"date": "2027-05-30", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 38", "homePens": null, "awayPens": null}, {"date": "2027-05-30", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 38", "homePens": null, "awayPens": null}, {"date": "2027-05-30", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 38", "homePens": null, "awayPens": null}, {"date": "2027-05-30", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 38", "homePens": null, "awayPens": null}, {"date": "2027-05-30", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 38", "homePens": null, "awayPens": null}, {"date": "2027-05-30", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 38", "homePens": null, "awayPens": null}, {"date": "2027-05-30", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 38", "homePens": null, "awayPens": null}, {"date": "2027-05-30", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 38", "homePens": null, "awayPens": null}, {"date": "2027-05-23", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 37", "homePens": null, "awayPens": null}, {"date": "2027-05-23", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 37", "homePens": null, "awayPens": null}, {"date": "2027-05-23", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 37", "homePens": null, "awayPens": null}, {"date": "2027-05-23", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 37", "homePens": null, "awayPens": null}, {"date": "2027-05-23", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 37", "homePens": null, "awayPens": null}, {"date": "2027-05-23", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 37", "homePens": null, "awayPens": null}, {"date": "2027-05-23", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 37", "homePens": null, "awayPens": null}, {"date": "2027-05-23", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 37", "homePens": null, "awayPens": null}, {"date": "2027-05-23", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 37", "homePens": null, "awayPens": null}, {"date": "2027-05-23", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 37", "homePens": null, "awayPens": null}, {"date": "2027-05-15", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 36", "homePens": null, "awayPens": null}, {"date": "2027-05-15", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 36", "homePens": null, "awayPens": null}, {"date": "2027-05-15", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 36", "homePens": null, "awayPens": null}, {"date": "2027-05-15", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 36", "homePens": null, "awayPens": null}, {"date": "2027-05-15", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 36", "homePens": null, "awayPens": null}, {"date": "2027-05-15", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 36", "homePens": null, "awayPens": null}, {"date": "2027-05-15", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 36", "homePens": null, "awayPens": null}, {"date": "2027-05-15", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 36", "homePens": null, "awayPens": null}, {"date": "2027-05-15", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 36", "homePens": null, "awayPens": null}, {"date": "2027-05-15", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 36", "homePens": null, "awayPens": null}, {"date": "2027-05-08", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 35", "homePens": null, "awayPens": null}, {"date": "2027-05-08", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 35", "homePens": null, "awayPens": null}, {"date": "2027-05-08", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 35", "homePens": null, "awayPens": null}, {"date": "2027-05-08", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 35", "homePens": null, "awayPens": null}, {"date": "2027-05-08", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 35", "homePens": null, "awayPens": null}, {"date": "2027-05-08", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 35", "homePens": null, "awayPens": null}, {"date": "2027-05-08", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 35", "homePens": null, "awayPens": null}, {"date": "2027-05-08", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 35", "homePens": null, "awayPens": null}, {"date": "2027-05-08", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 35", "homePens": null, "awayPens": null}, {"date": "2027-05-08", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 35", "homePens": null, "awayPens": null}, {"date": "2027-05-01", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 34", "homePens": null, "awayPens": null}, {"date": "2027-05-01", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 34", "homePens": null, "awayPens": null}, {"date": "2027-05-01", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 34", "homePens": null, "awayPens": null}, {"date": "2027-05-01", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 34", "homePens": null, "awayPens": null}, {"date": "2027-05-01", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 34", "homePens": null, "awayPens": null}, {"date": "2027-05-01", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 34", "homePens": null, "awayPens": null}, {"date": "2027-05-01", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 34", "homePens": null, "awayPens": null}, {"date": "2027-05-01", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 34", "homePens": null, "awayPens": null}, {"date": "2027-05-01", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 34", "homePens": null, "awayPens": null}, {"date": "2027-05-01", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 34", "homePens": null, "awayPens": null}, {"date": "2027-04-24", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 33", "homePens": null, "awayPens": null}, {"date": "2027-04-24", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 33", "homePens": null, "awayPens": null}, {"date": "2027-04-24", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 33", "homePens": null, "awayPens": null}, {"date": "2027-04-24", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 33", "homePens": null, "awayPens": null}, {"date": "2027-04-24", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 33", "homePens": null, "awayPens": null}, {"date": "2027-04-24", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 33", "homePens": null, "awayPens": null}, {"date": "2027-04-24", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 33", "homePens": null, "awayPens": null}, {"date": "2027-04-24", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 33", "homePens": null, "awayPens": null}, {"date": "2027-04-24", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 33", "homePens": null, "awayPens": null}, {"date": "2027-04-24", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 33", "homePens": null, "awayPens": null}, {"date": "2027-04-17", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 32", "homePens": null, "awayPens": null}, {"date": "2027-04-17", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 32", "homePens": null, "awayPens": null}, {"date": "2027-04-17", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 32", "homePens": null, "awayPens": null}, {"date": "2027-04-17", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 32", "homePens": null, "awayPens": null}, {"date": "2027-04-17", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 32", "homePens": null, "awayPens": null}, {"date": "2027-04-17", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 32", "homePens": null, "awayPens": null}, {"date": "2027-04-17", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 32", "homePens": null, "awayPens": null}, {"date": "2027-04-17", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 32", "homePens": null, "awayPens": null}, {"date": "2027-04-17", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 32", "homePens": null, "awayPens": null}, {"date": "2027-04-17", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 32", "homePens": null, "awayPens": null}, {"date": "2027-04-10", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 31", "homePens": null, "awayPens": null}, {"date": "2027-04-10", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 31", "homePens": null, "awayPens": null}, {"date": "2027-04-10", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 31", "homePens": null, "awayPens": null}, {"date": "2027-04-10", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 31", "homePens": null, "awayPens": null}, {"date": "2027-04-10", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 31", "homePens": null, "awayPens": null}, {"date": "2027-04-10", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 31", "homePens": null, "awayPens": null}, {"date": "2027-04-10", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 31", "homePens": null, "awayPens": null}, {"date": "2027-04-10", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 31", "homePens": null, "awayPens": null}, {"date": "2027-04-10", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 31", "homePens": null, "awayPens": null}, {"date": "2027-04-10", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 31", "homePens": null, "awayPens": null}, {"date": "2027-03-20", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 30", "homePens": null, "awayPens": null}, {"date": "2027-03-20", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 30", "homePens": null, "awayPens": null}, {"date": "2027-03-20", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 30", "homePens": null, "awayPens": null}, {"date": "2027-03-20", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 30", "homePens": null, "awayPens": null}, {"date": "2027-03-20", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 30", "homePens": null, "awayPens": null}, {"date": "2027-03-20", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 30", "homePens": null, "awayPens": null}, {"date": "2027-03-20", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 30", "homePens": null, "awayPens": null}, {"date": "2027-03-20", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 30", "homePens": null, "awayPens": null}, {"date": "2027-03-20", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 30", "homePens": null, "awayPens": null}, {"date": "2027-03-20", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 30", "homePens": null, "awayPens": null}, {"date": "2027-03-13", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 29", "homePens": null, "awayPens": null}, {"date": "2027-03-13", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 29", "homePens": null, "awayPens": null}, {"date": "2027-03-13", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 29", "homePens": null, "awayPens": null}, {"date": "2027-03-13", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 29", "homePens": null, "awayPens": null}, {"date": "2027-03-13", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 29", "homePens": null, "awayPens": null}, {"date": "2027-03-13", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 29", "homePens": null, "awayPens": null}, {"date": "2027-03-13", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 29", "homePens": null, "awayPens": null}, {"date": "2027-03-13", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 29", "homePens": null, "awayPens": null}, {"date": "2027-03-13", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 29", "homePens": null, "awayPens": null}, {"date": "2027-03-13", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 29", "homePens": null, "awayPens": null}, {"date": "2027-03-03", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 28", "homePens": null, "awayPens": null}, {"date": "2027-03-03", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 28", "homePens": null, "awayPens": null}, {"date": "2027-03-03", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 28", "homePens": null, "awayPens": null}, {"date": "2027-03-03", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 28", "homePens": null, "awayPens": null}, {"date": "2027-03-03", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 28", "homePens": null, "awayPens": null}, {"date": "2027-03-03", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 28", "homePens": null, "awayPens": null}, {"date": "2027-03-03", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 28", "homePens": null, "awayPens": null}, {"date": "2027-03-03", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 28", "homePens": null, "awayPens": null}, {"date": "2027-03-03", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 28", "homePens": null, "awayPens": null}, {"date": "2027-03-03", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 28", "homePens": null, "awayPens": null}, {"date": "2027-02-27", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 27", "homePens": null, "awayPens": null}, {"date": "2027-02-27", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 27", "homePens": null, "awayPens": null}, {"date": "2027-02-27", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 27", "homePens": null, "awayPens": null}, {"date": "2027-02-27", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 27", "homePens": null, "awayPens": null}, {"date": "2027-02-27", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 27", "homePens": null, "awayPens": null}, {"date": "2027-02-27", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 27", "homePens": null, "awayPens": null}, {"date": "2027-02-27", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 27", "homePens": null, "awayPens": null}, {"date": "2027-02-27", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 27", "homePens": null, "awayPens": null}, {"date": "2027-02-27", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 27", "homePens": null, "awayPens": null}, {"date": "2027-02-27", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 27", "homePens": null, "awayPens": null}, {"date": "2027-02-20", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 26", "homePens": null, "awayPens": null}, {"date": "2027-02-20", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 26", "homePens": null, "awayPens": null}, {"date": "2027-02-20", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 26", "homePens": null, "awayPens": null}, {"date": "2027-02-20", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 26", "homePens": null, "awayPens": null}, {"date": "2027-02-20", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 26", "homePens": null, "awayPens": null}, {"date": "2027-02-20", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 26", "homePens": null, "awayPens": null}, {"date": "2027-02-20", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 26", "homePens": null, "awayPens": null}, {"date": "2027-02-20", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 26", "homePens": null, "awayPens": null}, {"date": "2027-02-20", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 26", "homePens": null, "awayPens": null}, {"date": "2027-02-20", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 26", "homePens": null, "awayPens": null}, {"date": "2027-02-10", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 25", "homePens": null, "awayPens": null}, {"date": "2027-02-10", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 25", "homePens": null, "awayPens": null}, {"date": "2027-02-10", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 25", "homePens": null, "awayPens": null}, {"date": "2027-02-10", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 25", "homePens": null, "awayPens": null}, {"date": "2027-02-10", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 25", "homePens": null, "awayPens": null}, {"date": "2027-02-10", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 25", "homePens": null, "awayPens": null}, {"date": "2027-02-10", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 25", "homePens": null, "awayPens": null}, {"date": "2027-02-10", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 25", "homePens": null, "awayPens": null}, {"date": "2027-02-10", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 25", "homePens": null, "awayPens": null}, {"date": "2027-02-10", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 25", "homePens": null, "awayPens": null}, {"date": "2027-02-06", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 24", "homePens": null, "awayPens": null}, {"date": "2027-02-06", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 24", "homePens": null, "awayPens": null}, {"date": "2027-02-06", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 24", "homePens": null, "awayPens": null}, {"date": "2027-02-06", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 24", "homePens": null, "awayPens": null}, {"date": "2027-02-06", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 24", "homePens": null, "awayPens": null}, {"date": "2027-02-06", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 24", "homePens": null, "awayPens": null}, {"date": "2027-02-06", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 24", "homePens": null, "awayPens": null}, {"date": "2027-02-06", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 24", "homePens": null, "awayPens": null}, {"date": "2027-02-06", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 24", "homePens": null, "awayPens": null}, {"date": "2027-02-06", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 24", "homePens": null, "awayPens": null}, {"date": "2027-01-30", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 23", "homePens": null, "awayPens": null}, {"date": "2027-01-30", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 23", "homePens": null, "awayPens": null}, {"date": "2027-01-30", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 23", "homePens": null, "awayPens": null}, {"date": "2027-01-30", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 23", "homePens": null, "awayPens": null}, {"date": "2027-01-30", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 23", "homePens": null, "awayPens": null}, {"date": "2027-01-30", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 23", "homePens": null, "awayPens": null}, {"date": "2027-01-30", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 23", "homePens": null, "awayPens": null}, {"date": "2027-01-30", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 23", "homePens": null, "awayPens": null}, {"date": "2027-01-30", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 23", "homePens": null, "awayPens": null}, {"date": "2027-01-30", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 23", "homePens": null, "awayPens": null}, {"date": "2027-01-23", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 22", "homePens": null, "awayPens": null}, {"date": "2027-01-23", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 22", "homePens": null, "awayPens": null}, {"date": "2027-01-23", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 22", "homePens": null, "awayPens": null}, {"date": "2027-01-23", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 22", "homePens": null, "awayPens": null}, {"date": "2027-01-23", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 22", "homePens": null, "awayPens": null}, {"date": "2027-01-23", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 22", "homePens": null, "awayPens": null}, {"date": "2027-01-23", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 22", "homePens": null, "awayPens": null}, {"date": "2027-01-23", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 22", "homePens": null, "awayPens": null}, {"date": "2027-01-23", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 22", "homePens": null, "awayPens": null}, {"date": "2027-01-23", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 22", "homePens": null, "awayPens": null}, {"date": "2027-01-16", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 21", "homePens": null, "awayPens": null}, {"date": "2027-01-16", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 21", "homePens": null, "awayPens": null}, {"date": "2027-01-16", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 21", "homePens": null, "awayPens": null}, {"date": "2027-01-16", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 21", "homePens": null, "awayPens": null}, {"date": "2027-01-16", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 21", "homePens": null, "awayPens": null}, {"date": "2027-01-16", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 21", "homePens": null, "awayPens": null}, {"date": "2027-01-16", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 21", "homePens": null, "awayPens": null}, {"date": "2027-01-16", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 21", "homePens": null, "awayPens": null}, {"date": "2027-01-16", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 21", "homePens": null, "awayPens": null}, {"date": "2027-01-16", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 21", "homePens": null, "awayPens": null}, {"date": "2027-01-06", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 20", "homePens": null, "awayPens": null}, {"date": "2027-01-06", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 20", "homePens": null, "awayPens": null}, {"date": "2027-01-06", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 20", "homePens": null, "awayPens": null}, {"date": "2027-01-06", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 20", "homePens": null, "awayPens": null}, {"date": "2027-01-06", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 20", "homePens": null, "awayPens": null}, {"date": "2027-01-06", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 20", "homePens": null, "awayPens": null}, {"date": "2027-01-06", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 20", "homePens": null, "awayPens": null}, {"date": "2027-01-06", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 20", "homePens": null, "awayPens": null}, {"date": "2027-01-06", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 20", "homePens": null, "awayPens": null}, {"date": "2027-01-06", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 20", "homePens": null, "awayPens": null}, {"date": "2027-01-02", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 19", "homePens": null, "awayPens": null}, {"date": "2027-01-02", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 19", "homePens": null, "awayPens": null}, {"date": "2027-01-02", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 19", "homePens": null, "awayPens": null}, {"date": "2027-01-02", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 19", "homePens": null, "awayPens": null}, {"date": "2027-01-02", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 19", "homePens": null, "awayPens": null}, {"date": "2027-01-02", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 19", "homePens": null, "awayPens": null}, {"date": "2027-01-02", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 19", "homePens": null, "awayPens": null}, {"date": "2027-01-02", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 19", "homePens": null, "awayPens": null}, {"date": "2027-01-02", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 19", "homePens": null, "awayPens": null}, {"date": "2027-01-02", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 19", "homePens": null, "awayPens": null}, {"date": "2026-12-30", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 18", "homePens": null, "awayPens": null}, {"date": "2026-12-30", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 18", "homePens": null, "awayPens": null}, {"date": "2026-12-30", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 18", "homePens": null, "awayPens": null}, {"date": "2026-12-30", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 18", "homePens": null, "awayPens": null}, {"date": "2026-12-30", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 18", "homePens": null, "awayPens": null}, {"date": "2026-12-30", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 18", "homePens": null, "awayPens": null}, {"date": "2026-12-30", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 18", "homePens": null, "awayPens": null}, {"date": "2026-12-30", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 18", "homePens": null, "awayPens": null}, {"date": "2026-12-30", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 18", "homePens": null, "awayPens": null}, {"date": "2026-12-30", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 18", "homePens": null, "awayPens": null}, {"date": "2026-12-26", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 17", "homePens": null, "awayPens": null}, {"date": "2026-12-26", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 17", "homePens": null, "awayPens": null}, {"date": "2026-12-26", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 17", "homePens": null, "awayPens": null}, {"date": "2026-12-26", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 17", "homePens": null, "awayPens": null}, {"date": "2026-12-26", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 17", "homePens": null, "awayPens": null}, {"date": "2026-12-26", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 17", "homePens": null, "awayPens": null}, {"date": "2026-12-26", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 17", "homePens": null, "awayPens": null}, {"date": "2026-12-26", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 17", "homePens": null, "awayPens": null}, {"date": "2026-12-26", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 17", "homePens": null, "awayPens": null}, {"date": "2026-12-26", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 17", "homePens": null, "awayPens": null}, {"date": "2026-12-19", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 16", "homePens": null, "awayPens": null}, {"date": "2026-12-19", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 16", "homePens": null, "awayPens": null}, {"date": "2026-12-19", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 16", "homePens": null, "awayPens": null}, {"date": "2026-12-19", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 16", "homePens": null, "awayPens": null}, {"date": "2026-12-19", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 16", "homePens": null, "awayPens": null}, {"date": "2026-12-19", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 16", "homePens": null, "awayPens": null}, {"date": "2026-12-19", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 16", "homePens": null, "awayPens": null}, {"date": "2026-12-19", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 16", "homePens": null, "awayPens": null}, {"date": "2026-12-19", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 16", "homePens": null, "awayPens": null}, {"date": "2026-12-19", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 16", "homePens": null, "awayPens": null}, {"date": "2026-12-12", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 15", "homePens": null, "awayPens": null}, {"date": "2026-12-12", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 15", "homePens": null, "awayPens": null}, {"date": "2026-12-12", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 15", "homePens": null, "awayPens": null}, {"date": "2026-12-12", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 15", "homePens": null, "awayPens": null}, {"date": "2026-12-12", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 15", "homePens": null, "awayPens": null}, {"date": "2026-12-12", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 15", "homePens": null, "awayPens": null}, {"date": "2026-12-12", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 15", "homePens": null, "awayPens": null}, {"date": "2026-12-12", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 15", "homePens": null, "awayPens": null}, {"date": "2026-12-12", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 15", "homePens": null, "awayPens": null}, {"date": "2026-12-12", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 15", "homePens": null, "awayPens": null}, {"date": "2026-12-05", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 14", "homePens": null, "awayPens": null}, {"date": "2026-12-05", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 14", "homePens": null, "awayPens": null}, {"date": "2026-12-05", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 14", "homePens": null, "awayPens": null}, {"date": "2026-12-05", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 14", "homePens": null, "awayPens": null}, {"date": "2026-12-05", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 14", "homePens": null, "awayPens": null}, {"date": "2026-12-05", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 14", "homePens": null, "awayPens": null}, {"date": "2026-12-05", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 14", "homePens": null, "awayPens": null}, {"date": "2026-12-05", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 14", "homePens": null, "awayPens": null}, {"date": "2026-12-05", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 14", "homePens": null, "awayPens": null}, {"date": "2026-12-05", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 14", "homePens": null, "awayPens": null}, {"date": "2026-12-02", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 13", "homePens": null, "awayPens": null}, {"date": "2026-12-02", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 13", "homePens": null, "awayPens": null}, {"date": "2026-12-02", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 13", "homePens": null, "awayPens": null}, {"date": "2026-12-02", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 13", "homePens": null, "awayPens": null}, {"date": "2026-12-02", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 13", "homePens": null, "awayPens": null}, {"date": "2026-12-02", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 13", "homePens": null, "awayPens": null}, {"date": "2026-12-02", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 13", "homePens": null, "awayPens": null}, {"date": "2026-12-02", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 13", "homePens": null, "awayPens": null}, {"date": "2026-12-02", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 13", "homePens": null, "awayPens": null}, {"date": "2026-12-02", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 13", "homePens": null, "awayPens": null}, {"date": "2026-11-28", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 12", "homePens": null, "awayPens": null}, {"date": "2026-11-28", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 12", "homePens": null, "awayPens": null}, {"date": "2026-11-28", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 12", "homePens": null, "awayPens": null}, {"date": "2026-11-28", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 12", "homePens": null, "awayPens": null}, {"date": "2026-11-28", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 12", "homePens": null, "awayPens": null}, {"date": "2026-11-28", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 12", "homePens": null, "awayPens": null}, {"date": "2026-11-28", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 12", "homePens": null, "awayPens": null}, {"date": "2026-11-28", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 12", "homePens": null, "awayPens": null}, {"date": "2026-11-28", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 12", "homePens": null, "awayPens": null}, {"date": "2026-11-28", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 12", "homePens": null, "awayPens": null}, {"date": "2026-11-21", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 11", "homePens": null, "awayPens": null}, {"date": "2026-11-21", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 11", "homePens": null, "awayPens": null}, {"date": "2026-11-21", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 11", "homePens": null, "awayPens": null}, {"date": "2026-11-21", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 11", "homePens": null, "awayPens": null}, {"date": "2026-11-21", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 11", "homePens": null, "awayPens": null}, {"date": "2026-11-21", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 11", "homePens": null, "awayPens": null}, {"date": "2026-11-21", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 11", "homePens": null, "awayPens": null}, {"date": "2026-11-21", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 11", "homePens": null, "awayPens": null}, {"date": "2026-11-21", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 11", "homePens": null, "awayPens": null}, {"date": "2026-11-21", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 11", "homePens": null, "awayPens": null}, {"date": "2026-11-07", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 10", "homePens": null, "awayPens": null}, {"date": "2026-11-07", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 10", "homePens": null, "awayPens": null}, {"date": "2026-11-07", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 10", "homePens": null, "awayPens": null}, {"date": "2026-11-07", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 10", "homePens": null, "awayPens": null}, {"date": "2026-11-07", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 10", "homePens": null, "awayPens": null}, {"date": "2026-11-07", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 10", "homePens": null, "awayPens": null}, {"date": "2026-11-07", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 10", "homePens": null, "awayPens": null}, {"date": "2026-11-07", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 10", "homePens": null, "awayPens": null}, {"date": "2026-11-07", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 10", "homePens": null, "awayPens": null}, {"date": "2026-11-07", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 10", "homePens": null, "awayPens": null}, {"date": "2026-10-31", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 9", "homePens": null, "awayPens": null}, {"date": "2026-10-31", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 9", "homePens": null, "awayPens": null}, {"date": "2026-10-31", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 9", "homePens": null, "awayPens": null}, {"date": "2026-10-31", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 9", "homePens": null, "awayPens": null}, {"date": "2026-10-31", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 9", "homePens": null, "awayPens": null}, {"date": "2026-10-31", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 9", "homePens": null, "awayPens": null}, {"date": "2026-10-31", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 9", "homePens": null, "awayPens": null}, {"date": "2026-10-31", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 9", "homePens": null, "awayPens": null}, {"date": "2026-10-31", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 9", "homePens": null, "awayPens": null}, {"date": "2026-10-31", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 9", "homePens": null, "awayPens": null}, {"date": "2026-10-24", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 8", "homePens": null, "awayPens": null}, {"date": "2026-10-24", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 8", "homePens": null, "awayPens": null}, {"date": "2026-10-24", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 8", "homePens": null, "awayPens": null}, {"date": "2026-10-24", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 8", "homePens": null, "awayPens": null}, {"date": "2026-10-24", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 8", "homePens": null, "awayPens": null}, {"date": "2026-10-24", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 8", "homePens": null, "awayPens": null}, {"date": "2026-10-24", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 8", "homePens": null, "awayPens": null}, {"date": "2026-10-24", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 8", "homePens": null, "awayPens": null}, {"date": "2026-10-24", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 8", "homePens": null, "awayPens": null}, {"date": "2026-10-24", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 8", "homePens": null, "awayPens": null}, {"date": "2026-10-17", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 7", "homePens": null, "awayPens": null}, {"date": "2026-10-17", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 7", "homePens": null, "awayPens": null}, {"date": "2026-10-17", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 7", "homePens": null, "awayPens": null}, {"date": "2026-10-17", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 7", "homePens": null, "awayPens": null}, {"date": "2026-10-17", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 7", "homePens": null, "awayPens": null}, {"date": "2026-10-17", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 7", "homePens": null, "awayPens": null}, {"date": "2026-10-17", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 7", "homePens": null, "awayPens": null}, {"date": "2026-10-17", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 7", "homePens": null, "awayPens": null}, {"date": "2026-10-17", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 7", "homePens": null, "awayPens": null}, {"date": "2026-10-17", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 7", "homePens": null, "awayPens": null}, {"date": "2026-10-10", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 6", "homePens": null, "awayPens": null}, {"date": "2026-10-10", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 6", "homePens": null, "awayPens": null}, {"date": "2026-10-10", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 6", "homePens": null, "awayPens": null}, {"date": "2026-10-10", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 6", "homePens": null, "awayPens": null}, {"date": "2026-10-10", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 6", "homePens": null, "awayPens": null}, {"date": "2026-10-10", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 6", "homePens": null, "awayPens": null}, {"date": "2026-10-10", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 6", "homePens": null, "awayPens": null}, {"date": "2026-10-10", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 6", "homePens": null, "awayPens": null}, {"date": "2026-10-10", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 6", "homePens": null, "awayPens": null}, {"date": "2026-10-10", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 6", "homePens": null, "awayPens": null}, {"date": "2026-09-20", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 5", "homePens": null, "awayPens": null}, {"date": "2026-09-20", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 5", "homePens": null, "awayPens": null}, {"date": "2026-09-19", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 5", "homePens": null, "awayPens": null}, {"date": "2026-09-19", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 5", "homePens": null, "awayPens": null}, {"date": "2026-09-19", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 5", "homePens": null, "awayPens": null}, {"date": "2026-09-19", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 5", "homePens": null, "awayPens": null}, {"date": "2026-09-19", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 5", "homePens": null, "awayPens": null}, {"date": "2026-09-19", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 5", "homePens": null, "awayPens": null}, {"date": "2026-09-19", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 5", "homePens": null, "awayPens": null}, {"date": "2026-09-18", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 5", "homePens": null, "awayPens": null}, {"date": "2026-09-14", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 4", "homePens": null, "awayPens": null}, {"date": "2026-09-13", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 4", "homePens": null, "awayPens": null}, {"date": "2026-09-13", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 4", "homePens": null, "awayPens": null}, {"date": "2026-09-12", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 4", "homePens": null, "awayPens": null}, {"date": "2026-09-12", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 4", "homePens": null, "awayPens": null}, {"date": "2026-09-12", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 4", "homePens": null, "awayPens": null}, {"date": "2026-09-12", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 4", "homePens": null, "awayPens": null}, {"date": "2026-09-12", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 4", "homePens": null, "awayPens": null}, {"date": "2026-09-12", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 4", "homePens": null, "awayPens": null}, {"date": "2026-09-12", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 4", "homePens": null, "awayPens": null}, {"date": "2026-09-06", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 3", "homePens": null, "awayPens": null}, {"date": "2026-09-06", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 3", "homePens": null, "awayPens": null}, {"date": "2026-09-05", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 3", "homePens": null, "awayPens": null}, {"date": "2026-09-05", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 3", "homePens": null, "awayPens": null}, {"date": "2026-09-05", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 3", "homePens": null, "awayPens": null}, {"date": "2026-09-05", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 3", "homePens": null, "awayPens": null}, {"date": "2026-09-05", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 3", "homePens": null, "awayPens": null}, {"date": "2026-09-05", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 3", "homePens": null, "awayPens": null}, {"date": "2026-09-05", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 3", "homePens": null, "awayPens": null}, {"date": "2026-09-04", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 3", "homePens": null, "awayPens": null}, {"date": "2026-08-31", "host": "Villa Park", "home": "Aston Villa", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Arsenal", "comp": "EPL", "stage": "Matchweek 2", "homePens": null, "awayPens": null}, {"date": "2026-08-30", "host": "Stamford Bridge", "home": "Chelsea", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brighton and Hove Albion", "comp": "EPL", "stage": "Matchweek 2", "homePens": null, "awayPens": null}, {"date": "2026-08-30", "host": "Elland Road", "home": "Leeds United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Brentford", "comp": "EPL", "stage": "Matchweek 2", "homePens": null, "awayPens": null}, {"date": "2026-08-30", "host": "Stadium of Light", "home": "Sunderland", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Fulham", "comp": "EPL", "stage": "Matchweek 2", "homePens": null, "awayPens": null}, {"date": "2026-08-30", "host": "Old Trafford", "home": "Manchester United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Ipswich Town", "comp": "EPL", "stage": "Matchweek 2", "homePens": null, "awayPens": null}, {"date": "2026-08-29", "host": "Anfield", "home": "Liverpool", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Nottingham Forest", "comp": "EPL", "stage": "Matchweek 2", "homePens": null, "awayPens": null}, {"date": "2026-08-29", "host": "Vitality Stadium", "home": "Bournemouth", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Everton", "comp": "EPL", "stage": "Matchweek 2", "homePens": null, "awayPens": null}, {"date": "2026-08-29", "host": "The Coventry Building Society Arena", "home": "Coventry City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Hull City", "comp": "EPL", "stage": "Matchweek 2", "homePens": null, "awayPens": null}, {"date": "2026-08-29", "host": "Tottenham Hotspur Stadium", "home": "Tottenham Hotspur", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Newcastle United", "comp": "EPL", "stage": "Matchweek 2", "homePens": null, "awayPens": null}, {"date": "2026-08-28", "host": "Selhurst Park", "home": "Crystal Palace", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "EPL", "stage": "Matchweek 2", "homePens": null, "awayPens": null}, {"date": "2026-08-24", "host": "Craven Cottage", "home": "Fulham", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Chelsea", "comp": "EPL", "stage": "Matchweek 1", "homePens": null, "awayPens": null}, {"date": "2026-08-23", "host": "American Express Stadium", "home": "Brighton and Hove Albion", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Aston Villa", "comp": "EPL", "stage": "Matchweek 1", "homePens": null, "awayPens": null}, {"date": "2026-08-23", "host": "Etihad Stadium", "home": "Manchester City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Bournemouth", "comp": "EPL", "stage": "Matchweek 1", "homePens": null, "awayPens": null}, {"date": "2026-08-23", "host": "St. James' Park", "home": "Newcastle United", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Liverpool", "comp": "EPL", "stage": "Matchweek 1", "homePens": null, "awayPens": null}, {"date": "2026-08-22", "host": "The MKM Stadium", "home": "Hull City", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester United", "comp": "EPL", "stage": "Matchweek 1", "homePens": null, "awayPens": null}, {"date": "2026-08-22", "host": "Hill Dickinson Stadium", "home": "Everton", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Crystal Palace", "comp": "EPL", "stage": "Matchweek 1", "homePens": null, "awayPens": null}, {"date": "2026-08-22", "host": "Portman Road", "home": "Ipswich Town", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Sunderland", "comp": "EPL", "stage": "Matchweek 1", "homePens": null, "awayPens": null}, {"date": "2026-08-22", "host": "The City Ground", "home": "Nottingham Forest", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Leeds United", "comp": "EPL", "stage": "Matchweek 1", "homePens": null, "awayPens": null}, {"date": "2026-08-22", "host": "Gtech Community Stadium", "home": "Brentford", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Tottenham Hotspur", "comp": "EPL", "stage": "Matchweek 1", "homePens": null, "awayPens": null}, {"date": "2026-08-21", "host": "Emirates Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Coventry City", "comp": "EPL", "stage": "Matchweek 1", "homePens": null, "awayPens": null}, {"date": "2026-08-13", "host": "Principality Stadium", "home": "Arsenal", "homeJersey": null, "homeImg": null, "homeScore": null, "awayScore": null, "awayJersey": null, "awayImg": null, "away": "Manchester City", "comp": "Community Shield", "stage": "Matchweek 1", "homePens": null, "awayPens": null}];
+
+
+
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNLfZ7KInTXjT6u4SA1JdMpnsDDoz3bb_lwxFUjtIhYgEYpxsTsgJYZDckqJOp6Csd4m2izg6gjCPs/pub?output=csv";
+
+// Minimal CSV parser that handles quoted fields (commas/newlines inside quotes, "" as an escaped quote)
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i = 0; i < text.length; i++){
+    const c = text[i], next = text[i+1];
+    if(inQuotes){
+      if(c === '"' && next === '"'){ field += '"'; i++; }
+      else if(c === '"'){ inQuotes = false; }
+      else { field += c; }
+    } else {
+      if(c === '"'){ inQuotes = true; }
+      else if(c === ','){ row.push(field); field = ''; }
+      else if(c === '\n' || c === '\r'){
+        if(c === '\r' && next === '\n') i++;
+        row.push(field); field = '';
+        rows.push(row); row = [];
+      } else { field += c; }
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.length > 1 || r[0] !== '');
+}
+
+// Match Log columns: Date, Host Country, Venue, Home Team, Home Jersey, Home Jersey Image URL,
+// Home Score, Away Score, Away Jersey, Away Jersey Image URL, Away Team, Competition, Stage, Notes
+function parseSheetDate(s){
+  if(!s) return null;
+  const d = new Date(s);
+  if(isNaN(d)) return null;
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function csvRowsToMatches(rows){
+  const [header, ...data] = rows;
+  return data
+    .filter(r => r[2])  // Home Team present
+    .map(r => ({
+      date: parseSheetDate(r[0]),
+      host: r[1] || null,  // Venue/Stadium
+      home: r[2],
+      homeJersey: r[3] || null,
+      homeImg: r[4] || null,
+      homeScore: r[5] === '' ? null : parseFloat(r[5]),
+      awayScore: r[6] === '' ? null : parseFloat(r[6]),
+      awayJersey: r[7] || null,
+      awayImg: r[8] || null,
+      away: r[9],
+      comp: r[10] || null,
+      stage: r[11] ? `Matchweek ${r[11]}` : null,
+      homePens: (r[13] === '' || r[13] === undefined) ? null : parseFloat(r[13]),
+      awayPens: (r[14] === '' || r[14] === undefined) ? null : parseFloat(r[14])
+    }))
+    .sort((a,b) => (b.date||'').localeCompare(a.date||''));
+}
+
+async function loadLiveData(){
+  const statusEl = document.getElementById('data-status');
+  if(!CSV_URL){
+    statusEl.innerHTML = `<span style="color:var(--text-dim2)">&#9679;</span> Showing saved snapshot (live link not set up yet)`;
+    return;
+  }
+  try{
+    const res = await fetch(CSV_URL, {cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    const live = csvRowsToMatches(rows);
+    if(live.length === 0) throw new Error('No rows parsed');
+
+    MATCHES = live;
+    refreshTeamList();
+
+    // repopulate the competition dropdown in case new competitions were added
+    const prevValue = compEl.value;
+    const comps = [...new Set(MATCHES.map(m => m.comp).filter(Boolean))].sort();
+    compEl.innerHTML = '<option value="">All competitions</option>' +
+      comps.map(c => `<option value="${c}">${c} (${compCode(c)})</option>`).join('');
+    compEl.value = prevValue;
+
+    document.getElementById('total-count').textContent = MATCHES.length;
+    document.getElementById('kit-count').textContent = MATCHES.filter(m => m.homeImg || m.awayImg).length;
+    setDefaultStatus();
+    applyFilters();
+
+    const now = new Date().toLocaleTimeString('en-US', {hour:'numeric', minute:'2-digit'});
+    statusEl.innerHTML = `<span style="color:var(--win)">&#9679;</span> Live data &mdash; updated ${now}`;
+  } catch(err){
+    statusEl.innerHTML = `<span style="color:var(--text-dim2)">&#9679;</span> Showing saved snapshot (live data unavailable right now)`;
+    console.warn('Live data fetch failed, using snapshot:', err);
+  }
+}
+
+const JERSEY_CODE = {Home:'H', Away:'A', Third:'T', Fourth:'4TH', Anniversary:'ANN'};
+function jerseyCode(j){ return j ? (JERSEY_CODE[j] || 'OTH') : 'UNK'; }
+function jerseyLabel(j){ return j ? j : 'Unknown'; }
+
+const COMP_CODE = {
+  'EPL':'EPL', 'Community Shield':'CS'
+};
+function compCode(c){ if(!c) return ''; return COMP_CODE[c] || c.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,5); }
+
+const listEl = document.getElementById('list');
+const matchupEl = document.getElementById('matchup');
+const searchEl = document.getElementById('search');
+const compEl = document.getElementById('comp-filter');
+const statusFilterEl = document.getElementById('status-filter');
+const suggestionsEl = document.getElementById('suggestions');
+const clearBtn = document.getElementById('clear-search');
+const statsEl = document.getElementById('jersey-stats');
+let activeIndex = 0;
+let filtered = MATCHES;
+let selectedTeam = null;   // set when the user picks an exact team from the dropdown
+let highlightIdx = -1;     // keyboard highlight within the suggestions list
+
+// Strip accents so "sao tome" matches "São Tomé e Príncipe", "turkiye" matches "Türkiye", etc.
+function normalizeText(s){
+  return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+
+// Groups of alternate names that should all match each other, for cases where the name
+// itself changed (not just accents) - e.g. common name vs. current official name.
+const ALIAS_GROUPS = [
+  ['turkey','turkiye'],
+  ['czech republic','czechia'],
+  ['ivory coast',"cote d'ivoire",'cote divoire'],
+  ['cape verde','cabo verde'],
+  ['myanmar','burma'],
+  ['netherlands','holland'],
+  ['united states','usa','america','united states of america'],
+  ['south korea','korea republic'],
+  ['north korea','korea dpr'],
+  ['dem. rep. of congo','democratic republic of congo','dr congo','congo-kinshasa','congo kinshasa'],
+  ['congo','republic of congo','congo-brazzaville','congo brazzaville'],
+  ['ireland','republic of ireland'],
+  ['st martin','saint martin'],
+  ['st lucia','saint lucia'],
+  ['st vincent','saint vincent','saint vincent and the grenadines'],
+  ['st kitts & nevis','saint kitts and nevis','saint kitts & nevis'],
+  ['antigua & barbuda','antigua and barbuda'],
+  ['trinidad & tobago','trinidad and tobago'],
+  ['bosnia & herzegovina','bosnia and herzegovina'],
+];
+function aliasVariants(normalized){
+  const group = ALIAS_GROUPS.find(g => g.includes(normalized));
+  return group || [normalized];
+}
+// true if the (normalized) query matches the (normalized) team name, directly or via alias
+function textMatches(normQuery, normTeam){
+  if(!normQuery) return true;
+  if(normTeam.includes(normQuery)) return true;
+  return aliasVariants(normQuery).some(v => normTeam.includes(v));
+}
+
+let TEAM_LIST = [];
+function refreshTeamList(){
+  TEAM_LIST = [...new Set(MATCHES.flatMap(m => [m.home, m.away]))].sort();
+}
+
+function fmtDate(d, short){
+  if(!d) return 'TBC';
+  const dt = new Date(d + 'T00:00:00');
+  if(short) return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'}).toUpperCase();
+  return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}).toUpperCase();
+}
+
+// result from a given side's perspective: 'win' | 'loss' | 'draw' | null (not played)
+function wentToPens(m){
+  return m.homeScore !== null && m.homeScore !== undefined &&
+         m.awayScore !== null && m.awayScore !== undefined &&
+         m.homeScore === m.awayScore &&
+         m.homePens !== null && m.homePens !== undefined &&
+         m.awayPens !== null && m.awayPens !== undefined;
+}
+
+function resultFor(m, side){
+  if(m.homeScore===null||m.homeScore===undefined||m.awayScore===null||m.awayScore===undefined) return null;
+  if(m.homeScore===m.awayScore){
+    if(wentToPens(m)){
+      const homeWonPens = m.homePens > m.awayPens;
+      return side==='home' ? (homeWonPens ? 'win' : 'loss') : (homeWonPens ? 'loss' : 'win');
+    }
+    return 'draw';
+  }
+  const homeWon = m.homeScore > m.awayScore;
+  if(side==='home') return homeWon ? 'win' : 'loss';
+  return homeWon ? 'loss' : 'win';
+}
+
+function jerseySlot(team, jersey, img){
+  const hasImg = !!img;
+  return `
+    <div class="jersey-slot">
+      <div class="jersey-photo ${hasImg ? 'has-image' : 'empty'}">
+        ${hasImg
+          ? `<img src="${img}" alt="${team} ${jersey||''} jersey" loading="lazy" onerror="this.parentElement.classList.remove('has-image');this.parentElement.classList.add('empty');this.remove();this.parentElement.insertAdjacentHTML('beforeend','<i class=\'ti ti-shirt-sport\'></i>');">`
+          : `<i class="ti ti-shirt-sport"></i>`}
+      </div>
+      <p class="no-photo-label">${hasImg ? '' : 'no jersey photo yet'}</p>
+      <p class="team-name">${team}</p>
+      <p class="jersey-tag">${jersey ? jersey + ' jersey' : 'jersey unknown'}</p>
+    </div>`;
+}
+
+function renderMatchup(m){
+  const played = m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined;
+  let scoreHtml;
+  if(played){
+    const hr = resultFor(m,'home'), ar = resultFor(m,'away');
+    const pensNote = wentToPens(m) ? `<p class="ft-label" style="margin-top:2px;">${m.homePens}&ndash;${m.awayPens} on penalties</p>` : '';
+    scoreHtml = `<div class="score-tiles"><div class="tile ${hr}">${m.homeScore}</div><span class="tile-sep">&ndash;</span><div class="tile ${ar}">${m.awayScore}</div></div><p class="ft-label">Full time</p>${pensNote}`;
+  } else {
+    scoreHtml = `<div class="vs-label">VS</div><p class="ft-label">Not yet played</p>`;
+  }
+
+  const metaParts = [m.comp, m.stage, m.host, fmtDate(m.date)].filter(Boolean);
+
+  matchupEl.innerHTML = `
+    <div class="matchup-grid">
+      ${jerseySlot(m.home, m.homeJersey, m.homeImg)}
+      <div class="score-block">${scoreHtml}</div>
+      ${jerseySlot(m.away, m.awayJersey, m.awayImg)}
+    </div>
+    <div class="meta-ticker">${metaParts.join(' \u2022 ')}</div>
+  `;
+}
+
+function resultClass(r){
+  if(r==='win') return 'result-win';
+  if(r==='loss') return 'result-loss';
+  if(r==='draw') return 'result-draw';
+  return '';
+}
+
+function renderList(){
+  if(filtered.length === 0){
+    listEl.innerHTML = `<div class="no-results">No matches found. Try a different team or competition.</div>`;
+    return;
+  }
+  listEl.innerHTML = filtered.map((m, i) => {
+    const played = m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined;
+    const hr = played ? resultFor(m,'home') : null;
+    const ar = played ? resultFor(m,'away') : null;
+    const hs = played ? m.homeScore : '';
+    const as = played ? m.awayScore : '';
+    return `
+      <div class="row ${i===activeIndex?'active':''}" data-i="${i}" tabindex="0">
+        <span class="c-date">${fmtDate(m.date, true)}</span>
+        <span class="jcode" title="${jerseyLabel(m.homeJersey)} jersey">${jerseyCode(m.homeJersey)}</span>
+        <span class="c-home ${resultClass(hr)}">${m.home}</span>
+        <span class="c-hs">${hs}</span>
+        <span class="c-dash">&ndash;</span>
+        <span class="c-as">${as}</span>
+        <span class="c-away ${resultClass(ar)}">${m.away}</span>
+        <span class="jcode" title="${jerseyLabel(m.awayJersey)} jersey">${jerseyCode(m.awayJersey)}</span>
+        <span class="c-comp" title="${m.comp || ''}${m.stage ? ' \u2014 ' + m.stage : ''}">${compCode(m.comp)}</span>
+        <span class="c-photos"><span class="photo-dot ${m.homeImg?'filled':''}"></span><span class="photo-dot ${m.awayImg?'filled':''}"></span></span>
+      </div>`;
+  }).join('');
+
+  listEl.querySelectorAll('.row').forEach(row => {
+    row.addEventListener('click', () => selectMatch(parseInt(row.dataset.i)));
+    row.addEventListener('keydown', e => { if(e.key==='Enter') selectMatch(parseInt(row.dataset.i)); });
+  });
+}
+
+function selectMatch(i){
+  activeIndex = i;
+  renderMatchup(filtered[i]);
+  renderList();
+  matchupEl.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function isPlayed(m){
+  return m.homeScore !== null && m.homeScore !== undefined && m.awayScore !== null && m.awayScore !== undefined;
+}
+
+function applyFilters(){
+  const rawQ = searchEl.value.trim();
+  const q = normalizeText(rawQ);
+  const comp = compEl.value;
+  const status = statusFilterEl.value;
+
+  let base = MATCHES.filter(m => {
+    let matchesQ;
+    if(selectedTeam){
+      matchesQ = (m.home === selectedTeam || m.away === selectedTeam);
+    } else {
+      matchesQ = !q || textMatches(q, normalizeText(m.home)) || textMatches(q, normalizeText(m.away));
+    }
+    const matchesComp = !comp || m.comp === comp;
+    return matchesQ && matchesComp;
+  });
+
+  // base is already sorted newest-first (from MATCHES). Results stay newest-first as-is;
+  // fixtures need reversing to soonest-first; "all" shows results then fixtures as two blocks.
+  const resultsBlock = base.filter(isPlayed);
+  const fixturesBlock = base.filter(m => !isPlayed(m)).reverse();
+
+  if(status === 'results') filtered = resultsBlock;
+  else if(status === 'fixtures') filtered = fixturesBlock;
+  else filtered = resultsBlock.concat(fixturesBlock);
+
+  activeIndex = 0;
+  if(filtered.length) renderMatchup(filtered[0]);
+  renderList();
+  renderJerseyStats();
+  clearBtn.style.display = searchEl.value ? 'block' : 'none';
+}
+
+// Default to Results if any games have been played yet, otherwise Fixtures (nothing to show in Results).
+function setDefaultStatus(){
+  const anyPlayed = MATCHES.some(isPlayed);
+  statusFilterEl.value = anyPlayed ? 'results' : 'fixtures';
+}
+
+// ---------- Autocomplete suggestions ----------
+function renderSuggestions(){
+  const rawQ = searchEl.value.trim();
+  const q = normalizeText(rawQ);
+  if(!q || selectedTeam){ suggestionsEl.hidden = true; return; }
+
+  const matches = TEAM_LIST.filter(t => textMatches(q, normalizeText(t))).slice(0, 8);
+  if(matches.length === 0){ suggestionsEl.hidden = true; return; }
+
+  highlightIdx = -1;
+  suggestionsEl.innerHTML = matches.map((t, i) => {
+    const count = MATCHES.filter(m => m.home === t || m.away === t).length;
+    return `<div class="suggestion" data-team="${t}" data-i="${i}"><span>${t}</span><span class="sc">${count} matches</span></div>`;
+  }).join('');
+  suggestionsEl.hidden = false;
+
+  suggestionsEl.querySelectorAll('.suggestion').forEach(el => {
+    el.addEventListener('click', () => pickTeam(el.dataset.team));
+  });
+}
+
+function pickTeam(team){
+  selectedTeam = team;
+  searchEl.value = team;
+  suggestionsEl.hidden = true;
+  applyFilters();
+}
+
+function clearSearch(){
+  selectedTeam = null;
+  searchEl.value = '';
+  suggestionsEl.hidden = true;
+  applyFilters();
+  searchEl.focus();
+}
+
+searchEl.addEventListener('input', () => {
+  if(selectedTeam && searchEl.value !== selectedTeam) selectedTeam = null;
+  renderSuggestions();
+  applyFilters();
+});
+
+searchEl.addEventListener('keydown', (e) => {
+  const items = suggestionsEl.querySelectorAll('.suggestion');
+  if(suggestionsEl.hidden || items.length === 0) return;
+  if(e.key === 'ArrowDown'){
+    e.preventDefault();
+    highlightIdx = Math.min(highlightIdx + 1, items.length - 1);
+  } else if(e.key === 'ArrowUp'){
+    e.preventDefault();
+    highlightIdx = Math.max(highlightIdx - 1, 0);
+  } else if(e.key === 'Enter'){
+    if(highlightIdx >= 0){ e.preventDefault(); pickTeam(items[highlightIdx].dataset.team); }
+    return;
+  } else if(e.key === 'Escape'){
+    suggestionsEl.hidden = true;
+    return;
+  } else {
+    return;
+  }
+  items.forEach((el, i) => el.classList.toggle('highlighted', i === highlightIdx));
+  items[highlightIdx].scrollIntoView({block:'nearest'});
+});
+
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('.search-wrap')) suggestionsEl.hidden = true;
+});
+
+clearBtn.addEventListener('click', clearSearch);
+compEl.addEventListener('change', applyFilters);
+statusFilterEl.addEventListener('change', applyFilters);
+
+// ---------- Jersey stats table for the selected team ----------
+const KNOWN_JERSEYS = ['Home','Away','Third','Fourth','Anniversary'];
+function jerseyBucket(j){ return j && KNOWN_JERSEYS.includes(j) ? j : (j ? 'Other' : 'Unknown'); }
+
+function renderJerseyStats(){
+  if(!selectedTeam){ statsEl.hidden = true; statsEl.innerHTML = ''; return; }
+
+  const comp = compEl.value;
+  const teamMatches = MATCHES.filter(m =>
+    (m.home === selectedTeam || m.away === selectedTeam) && (!comp || m.comp === comp)
+  );
+
+  const buckets = {};
+  ['Home','Away','Third','Fourth','Anniversary','Other','Unknown'].forEach(b => {
+    buckets[b] = {gp:0,w:0,d:0,l:0,gf:0,ga:0,pts:0};
+  });
+
+  teamMatches.forEach(m => {
+    const isHome = m.home === selectedTeam;
+    const jersey = isHome ? m.homeJersey : m.awayJersey;
+    const bucket = jerseyBucket(jersey);
+    const gf = isHome ? m.homeScore : m.awayScore;
+    const ga = isHome ? m.awayScore : m.homeScore;
+    if(gf === null || gf === undefined || ga === null || ga === undefined) return; // not yet played
+    buckets[bucket].gp++;
+    buckets[bucket].gf += gf;
+    buckets[bucket].ga += ga;
+    // Points always follow the regulation scoreline (a shootout never turns a draw into 3/0).
+    buckets[bucket].pts += (gf === ga) ? 1 : (gf > ga ? 3 : 0);
+    // W/D/L follow the shootout winner when one was recorded, same as the result colour coding.
+    const r = resultFor(m, isHome ? 'home' : 'away');
+    if(r === 'win') buckets[bucket].w++;
+    else if(r === 'loss') buckets[bucket].l++;
+    else buckets[bucket].d++;
+  });
+
+  const rows = ['Home','Away','Third','Fourth','Anniversary','Other','Unknown'].filter(b => buckets[b].gp > 0);
+  if(rows.length === 0){
+    statsEl.hidden = true; statsEl.innerHTML = '';
+    return;
+  }
+
+  const total = {gp:0,w:0,d:0,l:0,gf:0,ga:0,pts:0};
+  rows.forEach(b => { for(const k in total) total[k] += buckets[b][k]; });
+
+  function rowHtml(label, s, isTotal){
+    const gd = s.gf - s.ga;
+    const gdClass = gd > 0 ? 'gd-pos' : (gd < 0 ? 'gd-neg' : '');
+    return `<tr class="${isTotal ? 'total-row' : ''}">
+      <td>${label}</td><td>${s.gp}</td><td>${s.w}</td><td>${s.d}</td><td>${s.l}</td>
+      <td>${s.gf}</td><td>${s.ga}</td><td class="${gdClass}">${gd > 0 ? '+' : ''}${gd}</td><td>${s.pts}</td>
+    </tr>`;
+  }
+
+  statsEl.innerHTML = `
+    <h2>${selectedTeam} \u2014 jersey breakdown${comp ? ' (' + compCode(comp) + ')' : ''}</h2>
+    <table>
+      <thead><tr><th>Jersey</th><th>GP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>PTS</th></tr></thead>
+      <tbody>
+        ${rows.map(b => rowHtml(b, buckets[b], false)).join('')}
+        ${rowHtml('Total', total, true)}
+      </tbody>
+    </table>`;
+  statsEl.hidden = false;
+}
+
+const comps = [...new Set(MATCHES.map(m => m.comp).filter(Boolean))].sort();
+compEl.innerHTML += comps.map(c => `<option value="${c}">${c} (${compCode(c)})</option>`).join('');
+
+document.getElementById('total-count').textContent = MATCHES.length;
+document.getElementById('kit-count').textContent = MATCHES.filter(m => m.homeImg || m.awayImg).length;
+
+refreshTeamList();
+setDefaultStatus();
+applyFilters();
+
+// Show the snapshot immediately (above), then try to upgrade to live data from the sheet.
+loadLiveData();
+</script>
+</body>
+</html>
