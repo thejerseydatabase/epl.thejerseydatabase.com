@@ -159,11 +159,16 @@
     padding:20px 20px 8px;
     margin-bottom:16px;
   }
-  .jersey-stats h2{
-    font-family:'Anton',sans-serif;font-weight:400;font-size:16px;
-    text-transform:uppercase;letter-spacing:.02em;margin:0 0 14px;
-    color:var(--text-dim);
+  .stats-toggle{
+    width:100%;display:flex;align-items:center;justify-content:space-between;
+    background:none;border:none;padding:0;margin:0;cursor:pointer;
+    font-family:'Anton',sans-serif;font-weight:400;font-size:16px;text-transform:uppercase;
+    letter-spacing:.02em;color:var(--text-dim);
   }
+  .stats-toggle .ti{font-size:17px;transition:transform .15s ease;}
+  .stats-toggle.open .ti{transform:rotate(180deg);}
+  .stats-toggle:hover{color:var(--text);}
+  .stats-body{margin-top:14px;}
   .jersey-stats table{width:100%;border-collapse:collapse;font-size:13px;}
   .jersey-stats th{
     font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.05em;
@@ -930,15 +935,28 @@ function renderJerseyStats(){
   }
 
   statsEl.innerHTML = `
-    <h2>${selectedTeam} \u2014 jersey breakdown${comp ? ' (' + compCode(comp) + ')' : ''}</h2>
-    <table>
-      <thead><tr><th>Jersey</th><th>GP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>PTS</th></tr></thead>
-      <tbody>
-        ${rows.map(b => rowHtml(b, buckets[b], false)).join('')}
-        ${rowHtml('Total', total, true)}
-      </tbody>
-    </table>`;
+    <button class="stats-toggle" id="stats-toggle" aria-expanded="false">
+      <span>${selectedTeam} \u2014 jersey breakdown${comp ? ' (' + compCode(comp) + ')' : ''}</span><i class="ti ti-chevron-down"></i>
+    </button>
+    <div class="stats-body" id="stats-body" hidden>
+      <table>
+        <thead><tr><th>Jersey</th><th>GP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>PTS</th></tr></thead>
+        <tbody>
+          ${rows.map(b => rowHtml(b, buckets[b], false)).join('')}
+          ${rowHtml('Total', total, true)}
+        </tbody>
+      </table>
+    </div>`;
   statsEl.hidden = false;
+
+  const toggle = document.getElementById('stats-toggle');
+  const body = document.getElementById('stats-body');
+  toggle.addEventListener('click', () => {
+    const open = !body.hidden;
+    body.hidden = open;
+    toggle.setAttribute('aria-expanded', String(!open));
+    toggle.classList.toggle('open', !open);
+  });
 }
 
 const comps = [...new Set(MATCHES.map(m => m.comp).filter(Boolean))].sort();
